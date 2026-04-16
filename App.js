@@ -12,8 +12,7 @@ import {
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
-const BASE_URL = "http://192.168.137.49:5000";
-
+const BASE_URL = "https://nagpur-ev-stations.onrender.com";
 const ALL_COMPANIES = ["All", "Tata", "Ather", "Jio", "Statiq", "Iocl", "Other"];
 const ALL_POWERS = ["All", "7kW", "15kW", "30kW", "60kW", "120kW", "Unknown"];
 
