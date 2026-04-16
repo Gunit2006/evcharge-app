@@ -8,35 +8,40 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  ScrollView
+  ScrollView,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 const BASE_URL = "http://192.168.137.49:5000";
+
 const ALL_COMPANIES = ["All", "Tata", "Ather", "Jio", "Statiq", "Iocl", "Other"];
-const ALL_POWERS = ["All", "7kW", "15kW", "30kW", "60kW", "120kW"];
+const ALL_POWERS = ["All", "7kW", "15kW", "30kW", "60kW", "120kW", "Unknown"];
 
 export default function App() {
-  const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState("list");
-  const [chargers, setChargers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errorText, setErrorText] = useState("");
+  const [query, setQuery] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("All");
   const [selectedPower, setSelectedPower] = useState("All");
 
-  const fetchChargers = async () => {
+  const [chargers, setChargers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState("");
+
+  useEffect(() => {
+    loadChargers();
+  }, []);
+
+  async function loadChargers() {
     try {
       setLoading(true);
       setErrorText("");
 
       const response = await fetch(BASE_URL + "/api/chargers");
       if (!response.ok) {
-        throw new Error("API failed");
+        throw new Error("API request failed");
       }
 
       const data = await response.json();
-
       if (Array.isArray(data)) {
         setChargers(data);
         if (data.length === 0) {
@@ -44,29 +49,25 @@ export default function App() {
         }
       } else {
         setChargers([]);
-        setErrorText("API returned invalid data.");
+        setErrorText("Invalid API response.");
       }
-    } catch (e) {
+    } catch (err) {
       setChargers([]);
-      setErrorText("Could not connect to API.");
+      setErrorText("Could not connect to backend.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  useEffect(() => {
-    fetchChargers();
-  }, []);
-
-  const filteredChargers = useMemo(() => {
-    return chargers.filter(function (c) {
+  const filtered = useMemo(() => {
+    return chargers.filter((c) => {
       const name = String(c.name || "").toLowerCase();
       const q = query.trim().toLowerCase();
 
       const company = normalizeCompany(c.company);
       const power = normalizePower(c.power);
 
-      const searchMatch = q.length === 0 || name.indexOf(q) !== -1;
+      const searchMatch = q.length === 0 || name.includes(q);
       const companyMatch = selectedCompany === "All" || company === selectedCompany;
       const powerMatch = selectedPower === "All" || power === selectedPower;
 
@@ -74,318 +75,456 @@ export default function App() {
     });
   }, [chargers, query, selectedCompany, selectedPower]);
 
-  const mapBase = filteredChargers.length > 0 ? filteredChargers[0] : (chargers.length > 0 ? chargers[0] : null);
+  const fastCount = useMemo(() => {
+    return filtered.filter((c) => {
+      const p = normalizePower(c.power).toLowerCase();
+      if (!p.endsWith("kw")) return false;
+      const n = parseFloat(p.replace("kw", ""));
+      return !Number.isNaN(n) && n >= 30;
+    }).length;
+  }, [filtered]);
+
+  const mapBase = filtered.length > 0 ? filtered[0] : chargers[0];
   const initialRegion = {
     latitude: mapBase ? Number(mapBase.latitude) : 21.1458,
     longitude: mapBase ? Number(mapBase.longitude) : 79.0882,
     latitudeDelta: 0.12,
-    longitudeDelta: 0.12
+    longitudeDelta: 0.12,
   };
 
-  const renderChip = function (label, active, onPress) {
+  function renderChip(label, active, onPress) {
     return (
       <TouchableOpacity
         key={label}
-        onPress={onPress}
-        activeOpacity={0.85}
         style={[styles.chip, active && styles.chipActive]}
+        onPress={onPress}
+        activeOpacity={0.9}
       >
         <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
       </TouchableOpacity>
     );
-  };
+  }
 
-  const renderCard = function ({ item }) {
+  function renderCard({ item }) {
+    const company = normalizeCompany(item.company);
+    const power = normalizePower(item.power);
+
     return (
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>{item.name || "Unnamed Charger"}</Text>
-        <Text style={styles.cardLine}>Company: {normalizeCompany(item.company)}</Text>
-        <Text style={styles.cardLine}>Power: {normalizePower(item.power)}</Text>
-        <Text style={styles.cardLine}>
-          Location: {Number(item.latitude).toFixed(4)}, {Number(item.longitude).toFixed(4)}
-        </Text>
+        <View style={styles.cardAccent} />
+        <View style={styles.cardContent}>
+          <Text style={styles.cardTitle}>{item.name || "Unnamed Charger"}</Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.badgePrimary}>
+              <Text style={styles.badgePrimaryText}>{company}</Text>
+            </View>
+            <View style={styles.badgeMuted}>
+              <Text style={styles.badgeMutedText}>{power}</Text>
+            </View>
+          </View>
+          <Text style={styles.cardLine}>
+            Lat: {Number(item.latitude).toFixed(4)}  |  Lng: {Number(item.longitude).toFixed(4)}
+          </Text>
+        </View>
       </View>
     );
-  };
+  }
+
+  function Header() {
+    return (
+      <View>
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>Charge Atlas</Text>
+          <Text style={styles.heroSubtitle}>Find EV chargers faster across Nagpur</Text>
+
+          <View style={styles.statRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{filtered.length}</Text>
+              <Text style={styles.statLabel}>Visible</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{fastCount}</Text>
+              <Text style={styles.statLabel}>Fast (30+)</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.searchWrap}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by charger name..."
+            placeholderTextColor="#8a96a8"
+            value={query}
+            onChangeText={setQuery}
+          />
+        </View>
+
+        <Text style={styles.sectionTitle}>Company</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowPad}>
+          {ALL_COMPANIES.map((option) =>
+            renderChip(option, selectedCompany === option, () => setSelectedCompany(option))
+          )}
+        </ScrollView>
+
+        <Text style={styles.sectionTitle}>Power</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowPad}>
+          {ALL_POWERS.map((option) =>
+            renderChip(option, selectedPower === option, () => setSelectedPower(option))
+          )}
+        </ScrollView>
+
+        <Text style={styles.resultsText}>Showing {filtered.length} chargers</Text>
+      </View>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.heading}>EV Charger Finder</Text>
+    <SafeAreaView style={styles.root}>
+      <View style={styles.topBar}>
+        <Text style={styles.brand}>EV Navigator</Text>
 
-      <View style={styles.toggleRow}>
-        <TouchableOpacity
-          style={[styles.toggleButton, viewMode === "list" && styles.toggleButtonActive]}
-          onPress={function () { setViewMode("list"); }}
-        >
-          <Text style={[styles.toggleText, viewMode === "list" && styles.toggleTextActive]}>List</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleButton, viewMode === "map" && styles.toggleButtonActive]}
-          onPress={function () { setViewMode("map"); }}
-        >
-          <Text style={[styles.toggleText, viewMode === "map" && styles.toggleTextActive]}>Map</Text>
-        </TouchableOpacity>
+        <View style={styles.segment}>
+          <TouchableOpacity
+            style={[styles.segmentBtn, viewMode === "list" && styles.segmentBtnActive]}
+            onPress={() => setViewMode("list")}
+          >
+            <Text style={[styles.segmentTxt, viewMode === "list" && styles.segmentTxtActive]}>List</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.segmentBtn, viewMode === "map" && styles.segmentBtnActive]}
+            onPress={() => setViewMode("map")}
+          >
+            <Text style={[styles.segmentTxt, viewMode === "map" && styles.segmentTxtActive]}>Map</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {viewMode === "map" ? (
-        <View style={styles.fullMapWrap}>
-          <MapView style={styles.fullMap} initialRegion={initialRegion}>
-            {filteredChargers.map(function (c, index) {
-              return (
-                <Marker
-                  key={String(c.id || index)}
-                  coordinate={{
-                    latitude: Number(c.latitude) || 0,
-                    longitude: Number(c.longitude) || 0
-                  }}
-                  title={c.name || "EV Charger"}
-                  description={normalizeCompany(c.company) + " • " + normalizePower(c.power)}
-                />
-              );
-            })}
+      {loading ? (
+        <View style={styles.centerBox}>
+          <ActivityIndicator size="large" color="#d97706" />
+          <Text style={styles.centerText}>Loading chargers...</Text>
+        </View>
+      ) : viewMode === "map" ? (
+        <View style={styles.mapWrap}>
+          <MapView style={styles.map} initialRegion={initialRegion}>
+            {filtered.map((c, index) => (
+              <Marker
+                key={String(c.id || index)}
+                coordinate={{
+                  latitude: Number(c.latitude) || 0,
+                  longitude: Number(c.longitude) || 0,
+                }}
+                title={c.name || "EV Charger"}
+                description={normalizeCompany(c.company) + " • " + normalizePower(c.power)}
+              />
+            ))}
           </MapView>
         </View>
       ) : (
-        <>
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search charger name..."
-            placeholderTextColor="#94a3b8"
-            style={styles.searchInput}
-          />
-
-          <View style={styles.selectedRow}>
-            <View style={styles.selectedBox}>
-              <Text style={styles.selectedLabel}>Company</Text>
-              <Text style={styles.selectedValue}>{selectedCompany}</Text>
-            </View>
-            <View style={styles.selectedBox}>
-              <Text style={styles.selectedLabel}>Power</Text>
-              <Text style={styles.selectedValue}>{selectedPower}</Text>
-            </View>
-          </View>
-
-          <Text style={styles.sectionTitle}>Company Filter</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-            {ALL_COMPANIES.map(function (option) {
-              return renderChip(option, selectedCompany === option, function () {
-                setSelectedCompany(option);
-              });
-            })}
-          </ScrollView>
-
-          <Text style={styles.sectionTitle}>Power Filter</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-            {ALL_POWERS.map(function (option) {
-              return renderChip(option, selectedPower === option, function () {
-                setSelectedPower(option);
-              });
-            })}
-          </ScrollView>
-
-          {loading ? (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item, index) => String(item.id || index)}
+          renderItem={renderCard}
+          ListHeaderComponent={<Header />}
+          contentContainerStyle={styles.listPad}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
             <View style={styles.centerBox}>
-              <ActivityIndicator size="large" color="#2553d4" />
-              <Text style={styles.helperText}>Loading chargers...</Text>
+              <Text style={styles.centerText}>No chargers found for this filter.</Text>
             </View>
-          ) : (
-            <FlatList
-              data={filteredChargers}
-              keyExtractor={function (item, index) { return String(item.id || index); }}
-              renderItem={renderCard}
-              contentContainerStyle={styles.listContainer}
-              ListEmptyComponent={
-                <View style={styles.centerBox}>
-                  <Text style={styles.helperText}>No chargers found.</Text>
-                </View>
-              }
-            />
-          )}
-        </>
+          }
+        />
       )}
 
-      {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
+      {!!errorText && <Text style={styles.errorText}>{errorText}</Text>}
     </SafeAreaView>
   );
 }
 
 function normalizeCompany(value) {
-  const txt = String(value || "other").trim().toLowerCase();
+  const txt = String(value || "").toLowerCase();
 
-  if (txt.indexOf("tata") !== -1) return "Tata";
-  if (txt.indexOf("ather") !== -1) return "Ather";
-  if (txt.indexOf("jio") !== -1) return "Jio";
-  if (txt.indexOf("statiq") !== -1) return "Statiq";
-  if (txt.indexOf("iocl") !== -1) return "Iocl";
+  if (txt.includes("tata")) return "Tata";
+  if (txt.includes("ather")) return "Ather";
+  if (txt.includes("jio")) return "Jio";
+  if (txt.includes("statiq")) return "Statiq";
+  if (txt.includes("iocl")) return "Iocl";
+
   return "Other";
 }
 
 function normalizePower(value) {
   const txt = String(value || "").trim().toLowerCase();
-
   if (!txt || txt === "unknown") return "Unknown";
 
-  if (txt.slice(-2) === "kw") {
+  if (txt.endsWith("kw")) {
     const n = txt.replace("kw", "").trim();
     return n ? n + "kW" : "Unknown";
   }
 
-  const num = Number(txt);
-  if (!Number.isNaN(num)) return String(num) + "kW";
+  const n = Number(txt);
+  if (!Number.isNaN(n)) return String(n) + "kW";
 
   return "Unknown";
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: "#f4f6fb",
+    backgroundColor: "#f7f3eb",
+  },
+
+  topBar: {
+    backgroundColor: "#0f172a",
+    paddingTop: 8,
+    paddingBottom: 12,
     paddingHorizontal: 14,
-    paddingTop: 10
   },
-  heading: {
-    fontSize: 24,
+
+  brand: {
+    color: "#f8fafc",
+    fontSize: 21,
     fontWeight: "800",
-    color: "#0f172a",
-    marginBottom: 10
+    marginBottom: 10,
+    letterSpacing: 0.3,
   },
-  toggleRow: {
-    flexDirection: "row",
-    backgroundColor: "#e2e8f0",
-    borderRadius: 10,
+
+  segment: {
+    backgroundColor: "#1e293b",
+    borderRadius: 12,
     padding: 4,
-    marginBottom: 10
+    flexDirection: "row",
   },
-  toggleButton: {
+
+  segmentBtn: {
     flex: 1,
     alignItems: "center",
     paddingVertical: 8,
-    borderRadius: 8
+    borderRadius: 9,
   },
-  toggleButtonActive: {
-    backgroundColor: "#ffffff"
+
+  segmentBtnActive: {
+    backgroundColor: "#f59e0b",
   },
-  toggleText: {
-    color: "#64748b",
-    fontWeight: "700"
+
+  segmentTxt: {
+    color: "#cbd5e1",
+    fontWeight: "700",
   },
-  toggleTextActive: {
-    color: "#0f172a"
+
+  segmentTxtActive: {
+    color: "#111827",
+    fontWeight: "800",
   },
+
+  hero: {
+    margin: 14,
+    marginBottom: 10,
+    backgroundColor: "#111827",
+    borderRadius: 18,
+    padding: 16,
+  },
+
+  heroTitle: {
+    color: "#f8fafc",
+    fontSize: 24,
+    fontWeight: "900",
+    marginBottom: 4,
+  },
+
+  heroSubtitle: {
+    color: "#cbd5e1",
+    fontSize: 13,
+    marginBottom: 14,
+  },
+
+  statRow: {
+    flexDirection: "row",
+  },
+
+  statCard: {
+    flex: 1,
+    backgroundColor: "#1f2937",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    marginRight: 10,
+  },
+
+  statValue: {
+    color: "#f59e0b",
+    fontSize: 22,
+    fontWeight: "900",
+  },
+
+  statLabel: {
+    color: "#cbd5e1",
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  searchWrap: {
+    paddingHorizontal: 14,
+  },
+
   searchInput: {
     backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#dbe2ef",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 10,
-    color: "#0f172a"
-  },
-  selectedRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 8
-  },
-  selectedBox: {
-    flex: 1,
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#dbe2ef",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12
-  },
-  selectedLabel: {
-    color: "#64748b",
-    fontWeight: "700",
-    fontSize: 14
-  },
-  selectedValue: {
-    marginTop: 2,
-    color: "#0f172a",
-    fontWeight: "900",
-    fontSize: 24
-  },
-  sectionTitle: {
-    marginTop: 6,
-    marginBottom: 6,
-    color: "#64748b",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  chipRow: {
-    paddingBottom: 2,
-    paddingRight: 8
-  },
-  chip: {
-    backgroundColor: "#dbe4f3",
-    borderRadius: 999,
-    minWidth: 90,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginRight: 8
-  },
-  chipActive: {
-    backgroundColor: "#2553d4"
-  },
-  chipText: {
-    color: "#475569",
-    fontSize: 14,
-    fontWeight: "700"
-  },
-  chipTextActive: {
-    color: "#ffffff"
-  },
-  listContainer: {
-    paddingBottom: 24
-  },
-  card: {
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
     borderRadius: 14,
-    padding: 14,
-    marginBottom: 10
+    borderWidth: 1,
+    borderColor: "#e5dccd",
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 15,
+    color: "#0f172a",
   },
+
+  sectionTitle: {
+    marginTop: 12,
+    marginBottom: 7,
+    paddingHorizontal: 14,
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#6b7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+
+  rowPad: {
+    paddingHorizontal: 14,
+    paddingBottom: 2,
+  },
+
+  chip: {
+    backgroundColor: "#e5e7eb",
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: 999,
+    marginRight: 8,
+  },
+
+  chipActive: {
+    backgroundColor: "#111827",
+  },
+
+  chipText: {
+    color: "#374151",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+
+  chipTextActive: {
+    color: "#f9fafb",
+  },
+
+  resultsText: {
+    paddingHorizontal: 14,
+    marginTop: 10,
+    marginBottom: 8,
+    color: "#6b7280",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+
+  listPad: {
+    paddingBottom: 24,
+  },
+
+  card: {
+    marginHorizontal: 14,
+    marginBottom: 10,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#eee4d7",
+    flexDirection: "row",
+    overflow: "hidden",
+  },
+
+  cardAccent: {
+    width: 6,
+    backgroundColor: "#f59e0b",
+  },
+
+  cardContent: {
+    flex: 1,
+    padding: 12,
+  },
+
   cardTitle: {
     fontSize: 16,
+    fontWeight: "900",
+    color: "#111827",
+    marginBottom: 8,
+  },
+
+  badgeRow: {
+    flexDirection: "row",
+    marginBottom: 8,
+  },
+
+  badgePrimary: {
+    backgroundColor: "#1f2937",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    marginRight: 8,
+  },
+
+  badgePrimaryText: {
+    color: "#f9fafb",
     fontWeight: "800",
-    color: "#0f172a",
-    marginBottom: 6
+    fontSize: 12,
   },
+
+  badgeMuted: {
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+
+  badgeMutedText: {
+    color: "#374151",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+
   cardLine: {
-    color: "#475569",
-    fontSize: 13,
-    marginTop: 2
+    fontSize: 12,
+    color: "#6b7280",
+    fontWeight: "600",
   },
-  centerBox: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 28
-  },
-  helperText: {
-    marginTop: 8,
-    color: "#64748b",
-    fontWeight: "600"
-  },
-  fullMapWrap: {
+
+  mapWrap: {
     flex: 1,
-    borderRadius: 14,
+    margin: 14,
+    borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#dbe2ef"
+    borderColor: "#ddd6c9",
   },
-  fullMap: {
-    flex: 1
+
+  map: {
+    flex: 1,
   },
+
+  centerBox: {
+    paddingVertical: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  centerText: {
+    marginTop: 8,
+    color: "#6b7280",
+    fontWeight: "700",
+  },
+
   errorText: {
     color: "#b91c1c",
     textAlign: "center",
-    marginVertical: 8,
-    fontWeight: "700"
-  }
+    fontWeight: "800",
+    marginBottom: 8,
+  },
 });
