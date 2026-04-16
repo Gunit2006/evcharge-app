@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -9,14 +9,18 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  RefreshControl,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 const BASE_URL = "https://nagpur-ev-stations.onrender.com";
+
 const ALL_COMPANIES = ["All", "Tata", "Ather", "Jio", "Statiq", "Iocl", "Other"];
 const ALL_POWERS = ["All", "7kW", "15kW", "30kW", "60kW", "120kW", "Unknown"];
 
 export default function App() {
+  const listRef = useRef(null);
+
   const [viewMode, setViewMode] = useState("list");
   const [query, setQuery] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("All");
@@ -24,25 +28,36 @@ export default function App() {
 
   const [chargers, setChargers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [errorText, setErrorText] = useState("");
+  const [lastUpdated, setLastUpdated] = useState("");
 
   useEffect(() => {
     loadChargers();
   }, []);
 
-  async function loadChargers() {
-    try {
-      setLoading(true);
-      setErrorText("");
+  async function loadChargers(options = {}) {
+    const isRefresh = options.isRefresh === true;
 
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      setErrorText("");
       const response = await fetch(BASE_URL + "/api/chargers");
+
       if (!response.ok) {
         throw new Error("API request failed");
       }
 
       const data = await response.json();
+
       if (Array.isArray(data)) {
         setChargers(data);
+        setLastUpdated(new Date().toLocaleTimeString());
         if (data.length === 0) {
           setErrorText("API returned empty data.");
         }
@@ -51,11 +66,29 @@ export default function App() {
         setErrorText("Invalid API response.");
       }
     } catch (err) {
-      setChargers([]);
-      setErrorText("Could not connect to backend.");
+      setErrorText("Could not connect to server. Please retry.");
+      if (!isRefresh && chargers.length === 0) {
+        setChargers([]);
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }
+
+  function handleGlobalReload() {
+    setViewMode("list");
+    setQuery("");
+    setSelectedCompany("All");
+    setSelectedPower("All");
+
+    loadChargers({ isRefresh: true });
+
+    requestAnimationFrame(() => {
+      if (listRef.current) {
+        listRef.current.scrollToOffset({ offset: 0, animated: true });
+      }
+    });
   }
 
   const filtered = useMemo(() => {
@@ -113,6 +146,7 @@ export default function App() {
         <View style={styles.cardAccent} />
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle}>{item.name || "Unnamed Charger"}</Text>
+
           <View style={styles.badgeRow}>
             <View style={styles.badgePrimary}>
               <Text style={styles.badgePrimaryText}>{company}</Text>
@@ -121,8 +155,9 @@ export default function App() {
               <Text style={styles.badgeMutedText}>{power}</Text>
             </View>
           </View>
+
           <Text style={styles.cardLine}>
-            Lat: {Number(item.latitude).toFixed(4)}  |  Lng: {Number(item.longitude).toFixed(4)}
+            Lat: {Number(item.latitude).toFixed(4)} | Lng: {Number(item.longitude).toFixed(4)}
           </Text>
         </View>
       </View>
@@ -134,7 +169,7 @@ export default function App() {
       <View>
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>Charge Atlas</Text>
-          <Text style={styles.heroSubtitle}>Find EV chargers faster across Nagpur</Text>
+          <Text style={styles.heroSubtitle}>Find EV chargers faster in Nagpur</Text>
 
           <View style={styles.statRow}>
             <View style={styles.statCard}>
@@ -172,7 +207,10 @@ export default function App() {
           )}
         </ScrollView>
 
-        <Text style={styles.resultsText}>Showing {filtered.length} chargers</Text>
+        <View style={styles.metaRow}>
+          <Text style={styles.resultsText}>Showing {filtered.length} chargers</Text>
+          <Text style={styles.resultsText}>{lastUpdated ? "Updated: " + lastUpdated : ""}</Text>
+        </View>
       </View>
     );
   }
@@ -218,15 +256,27 @@ export default function App() {
               />
             ))}
           </MapView>
+
+          <TouchableOpacity style={styles.mapRefreshBtn} onPress={() => loadChargers({ isRefresh: true })}>
+            <Text style={styles.mapRefreshText}>Refresh</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={filtered}
           keyExtractor={(item, index) => String(item.id || index)}
           renderItem={renderCard}
           ListHeaderComponent={<Header />}
           contentContainerStyle={styles.listPad}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadChargers({ isRefresh: true })}
+              tintColor="#d97706"
+            />
+          }
           ListEmptyComponent={
             <View style={styles.centerBox}>
               <Text style={styles.centerText}>No chargers found for this filter.</Text>
@@ -235,20 +285,29 @@ export default function App() {
         />
       )}
 
-      {!!errorText && <Text style={styles.errorText}>{errorText}</Text>}
+      <TouchableOpacity style={styles.floatingReloadBtn} onPress={handleGlobalReload} activeOpacity={0.9}>
+        <Text style={styles.floatingReloadText}>Reload</Text>
+      </TouchableOpacity>
+
+      {!!errorText && (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{errorText}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => loadChargers()}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 function normalizeCompany(value) {
   const txt = String(value || "").toLowerCase();
-
   if (txt.includes("tata")) return "Tata";
   if (txt.includes("ather")) return "Ather";
   if (txt.includes("jio")) return "Jio";
   if (txt.includes("statiq")) return "Statiq";
   if (txt.includes("iocl")) return "Iocl";
-
   return "Other";
 }
 
@@ -263,7 +322,6 @@ function normalizePower(value) {
 
   const n = Number(txt);
   if (!Number.isNaN(n)) return String(n) + "kW";
-
   return "Unknown";
 }
 
@@ -416,10 +474,15 @@ const styles = StyleSheet.create({
     color: "#f9fafb",
   },
 
-  resultsText: {
+  metaRow: {
     paddingHorizontal: 14,
-    marginTop: 10,
+    marginTop: 8,
     marginBottom: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+
+  resultsText: {
     color: "#6b7280",
     fontWeight: "700",
     fontSize: 12,
@@ -508,6 +571,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  mapRefreshBtn: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "#111827",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+
+  mapRefreshText: {
+    color: "#ffffff",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+
+  floatingReloadBtn: {
+    position: "absolute",
+    right: 16,
+    bottom: 20,
+    backgroundColor: "#111827",
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    elevation: 4,
+  },
+
+  floatingReloadText: {
+    color: "#ffffff",
+    fontWeight: "800",
+    fontSize: 13,
+  },
+
   centerBox: {
     paddingVertical: 28,
     alignItems: "center",
@@ -520,10 +616,37 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  errorBox: {
+    marginHorizontal: 14,
+    marginBottom: 70,
+    backgroundColor: "#fee2e2",
+    borderColor: "#fecaca",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
   errorText: {
     color: "#b91c1c",
-    textAlign: "center",
+    fontWeight: "700",
+    flex: 1,
+    marginRight: 10,
+    fontSize: 12,
+  },
+
+  retryBtn: {
+    backgroundColor: "#b91c1c",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+
+  retryText: {
+    color: "#ffffff",
     fontWeight: "800",
-    marginBottom: 8,
+    fontSize: 12,
   },
 });
