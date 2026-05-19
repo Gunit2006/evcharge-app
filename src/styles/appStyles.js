@@ -471,6 +471,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
+  cardActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
   cardMetaRowEnd: {
     marginTop: 8,
     flexDirection: "row",
@@ -491,9 +496,24 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
 
+  cardActionGhost: {
+    marginLeft: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+
   cardActionText: {
     color: "#0b0f14",
     fontWeight: "800",
+    fontSize: 12,
+  },
+
+  cardActionGhostText: {
+    color: "#e2e8f0",
+    fontWeight: "700",
     fontSize: 12,
   },
 
@@ -710,6 +730,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 
+  primaryButtonDisabled: {
+    opacity: 0.5,
+  },
+
   primaryButtonText: {
     color: "#0b0f14",
     fontSize: 12,
@@ -737,6 +761,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+
+  highlightActionRow: {
+    marginTop: 14,
+    alignItems: "flex-start",
   },
 
   highlightMeta: {
@@ -920,6 +949,93 @@ const styles = StyleSheet.create({
     color: "#f8fafc",
     fontSize: 12,
     fontFamily: "SpaceGrotesk_600SemiBold",
+  },
+
+  bookingCard: {
+    marginHorizontal: 20,
+    marginTop: 4,
+  },
+
+  bookingSectionTitle: {
+    color: "#e2e8f0",
+    fontSize: 13,
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    marginBottom: 12,
+  },
+
+  slotGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+
+  slotChip: {
+    width: "48%",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    paddingVertical: 10,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+
+  slotChipActive: {
+    backgroundColor: "rgba(90, 200, 250, 0.2)",
+    borderColor: "rgba(90, 200, 250, 0.5)",
+  },
+
+  slotText: {
+    color: "#cbd5e1",
+    fontSize: 12,
+    fontFamily: "SpaceGrotesk_600SemiBold",
+  },
+
+  slotTextActive: {
+    color: "#e0f2fe",
+  },
+
+  bookingFooter: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+  },
+
+  bookingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+
+  bookingLabel: {
+    color: "#94a3b8",
+    fontSize: 12,
+    fontFamily: "SpaceGrotesk_400Regular",
+  },
+
+  bookingValue: {
+    color: "#f8fafc",
+    fontSize: 12,
+    fontFamily: "SpaceGrotesk_600SemiBold",
+  },
+
+  bookingSuccessTitle: {
+    color: "#f8fafc",
+    fontSize: 16,
+    fontFamily: "SpaceGrotesk_600SemiBold",
+  },
+
+  bookingSuccessSubtitle: {
+    marginTop: 6,
+    color: "#9aa4b2",
+    fontSize: 12,
+    fontFamily: "SpaceGrotesk_400Regular",
+  },
+
+  bookingSuccessHint: {
+    marginTop: 10,
+    color: "#94a3b8",
+    fontSize: 12,
+    fontFamily: "SpaceGrotesk_400Regular",
   },
 });
 

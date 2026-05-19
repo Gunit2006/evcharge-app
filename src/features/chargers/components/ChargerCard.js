@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import styles from "../../../styles/appStyles";
 import { normalizeCompany, normalizePower } from "../models/charger";
 import { formatDistance } from "../../../utils/geo";
@@ -7,6 +8,7 @@ import { openMaps } from "../../../utils/maps";
 import GlassCard from "../../../ui/components/GlassCard";
 
 export default function ChargerCard({ item }) {
+  const navigation = useNavigation();
   const company = normalizeCompany(item.company);
   const power = normalizePower(item.power);
   const distanceLabel = formatDistance(item.distanceKm);
@@ -35,16 +37,24 @@ export default function ChargerCard({ item }) {
         </Text>
 
         {(showDistance || canNavigate) && (
-          <View style={showDistance ? styles.cardMetaRow : styles.cardMetaRowEnd}>
+          <View style={styles.cardMetaRow}>
             {showDistance && <Text style={styles.cardMetaText}>{distanceLabel} away</Text>}
-            {canNavigate && (
+            <View style={styles.cardActionRow}>
+              {canNavigate && (
+                <TouchableOpacity
+                  style={styles.cardActionBtn}
+                  onPress={() => openMaps({ latitude, longitude, label: item.name })}
+                >
+                  <Text style={styles.cardActionText}>Directions</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
-                style={styles.cardActionBtn}
-                onPress={() => openMaps({ latitude, longitude, label: item.name })}
+                style={styles.cardActionGhost}
+                onPress={() => navigation.navigate("BookingSlot", { charger: item })}
               >
-                <Text style={styles.cardActionText}>Directions</Text>
+                <Text style={styles.cardActionGhostText}>Book</Text>
               </TouchableOpacity>
-            )}
+            </View>
           </View>
         )}
       </View>

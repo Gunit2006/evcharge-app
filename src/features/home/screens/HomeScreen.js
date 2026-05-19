@@ -54,6 +54,25 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.highlightMeta}>Open 24/7</Text>
             <Text style={styles.highlightMeta}>From 19/kWh</Text>
           </View>
+          <View style={styles.highlightActionRow}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() =>
+                navigation.navigate("BookingSlot", {
+                  charger: {
+                    id: 1,
+                    name: "Civil Lines Supercharge",
+                    company: "Statiq",
+                    power: "60kW",
+                    latitude: 21.1612,
+                    longitude: 79.0823,
+                  },
+                })
+              }
+            >
+              <Text style={styles.primaryButtonText}>Book slot</Text>
+            </TouchableOpacity>
+          </View>
         </GlassCard>
       </View>
     </MainLayout>

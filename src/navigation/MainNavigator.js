@@ -5,9 +5,11 @@ import { Ionicons } from "@expo/vector-icons";
 import ChargersHomeScreen from "../features/chargers/screens/ChargersHomeScreen";
 import HomeScreen from "../features/home/screens/HomeScreen";
 import RoutePlanningScreen from "../features/route/screens/RoutePlanningScreen";
-import BatteryHealthScreen from "../features/battery/screens/BatteryHealthScreen";
 import ProfileScreen from "../features/profile/screens/ProfileScreen";
 import ChargingSessionScreen from "../features/charging/screens/ChargingSessionScreen";
+import BookingSlotScreen from "../features/booking/screens/BookingSlotScreen";
+import BookingConfirmScreen from "../features/booking/screens/BookingConfirmScreen";
+import BookingSuccessScreen from "../features/booking/screens/BookingSuccessScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -36,7 +38,6 @@ function AppTabs() {
             Home: "home-outline",
             Nearby: "navigate-outline",
             Route: "map-outline",
-            Battery: "battery-half-outline",
             Profile: "person-outline",
           };
           const iconName = map[route.name] || "ellipse-outline";
@@ -47,7 +48,6 @@ function AppTabs() {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Nearby" component={ChargersHomeScreen} />
       <Tab.Screen name="Route" component={RoutePlanningScreen} />
-      <Tab.Screen name="Battery" component={BatteryHealthScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -57,6 +57,13 @@ export default function MainNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Tabs" component={AppTabs} />
+      <Stack.Screen
+        name="BookingSlot"
+        component={BookingSlotScreen}
+        options={{ presentation: "modal" }}
+      />
+      <Stack.Screen name="BookingConfirm" component={BookingConfirmScreen} />
+      <Stack.Screen name="BookingSuccess" component={BookingSuccessScreen} />
       <Stack.Screen
         name="ChargingSession"
         component={ChargingSessionScreen}
