@@ -4,7 +4,13 @@ import styles from "../../../styles/appStyles";
 import ChargerCard from "../components/ChargerCard";
 import ChargersHeader from "../components/ChargersHeader";
 
-export default function ChargersListScreen({ listRef, data, refreshing, onRefresh, headerProps }) {
+export default function ChargersListScreen({
+  listRef,
+  data,
+  refreshing,
+  onRefresh,
+  headerProps,
+}) {
   return (
     <FlatList
       ref={listRef}

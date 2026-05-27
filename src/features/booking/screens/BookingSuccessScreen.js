@@ -19,7 +19,11 @@ export default function BookingSuccessScreen({ navigation, route }) {
       <GlassCard style={styles.bookingCard}>
         <Text style={styles.bookingSuccessTitle}>{charger.name || "Charger"}</Text>
         <Text style={styles.bookingSuccessSubtitle}>{slot || ""}</Text>
-        <Text style={styles.bookingSuccessHint}>Arrive 5 minutes early to check in.</Text>
+        <Text style={styles.bookingSuccessHint}>Arrive within 15 minutes to start charging.</Text>
+        <Text style={styles.bookingSuccessPolicy}>
+          Late arrival cancels the slot. Traffic delay may refund Rs 25; no-shows
+          for negligence are not refunded.
+        </Text>
       </GlassCard>
 
       <View style={styles.bookingFooter}>

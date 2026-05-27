@@ -1,12 +1,60 @@
 import React from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, Text, ToastAndroid, TouchableOpacity, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import MainLayout from "../../../ui/components/MainLayout";
 import GlassCard from "../../../ui/components/GlassCard";
+import { reserveDemoSlot } from "../../chargers/api/demoAvailabilityApi";
 import styles from "../../../styles/appStyles";
+
+const ACTIVE_BOOKING_KEY = "demo_active_booking";
 
 export default function BookingConfirmScreen({ navigation, route }) {
   const charger = route?.params?.charger || {};
   const slot = route?.params?.slot || "";
+
+  const showSlotUnavailable = () => {
+    if (Platform.OS === "android") {
+      ToastAndroid.show("Slot Unavailable", ToastAndroid.SHORT);
+      return;
+    }
+    Alert.alert("Slot Unavailable", "Please pick another slot.");
+  };
+
+  const completeBooking = async () => {
+    try {
+      const booking = await reserveDemoSlot({ chargerId: charger?.id, slot, source: "app" });
+      await AsyncStorage.setItem(
+        ACTIVE_BOOKING_KEY,
+        JSON.stringify({
+          charger,
+          slot: booking?.slot || slot,
+          expires_at: booking?.expires_at || null,
+          status: "booked",
+          booked_at: new Date().toISOString(),
+          source: "app",
+        })
+      );
+      navigation.navigate("BookingSuccess", { charger, slot });
+    } catch (err) {
+      if (err?.status === 409) {
+        showSlotUnavailable();
+        return;
+      }
+
+      Alert.alert("Booking failed", err?.message || "Unable to complete booking.");
+    }
+  };
+
+  const handleConfirm = () => {
+    Alert.alert(
+      "Pay Rs 50",
+      "Payment gateway (demo). Continue to confirm the booking?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Pay", onPress: completeBooking },
+      ]
+    );
+  };
 
   return (
     <MainLayout>
@@ -34,9 +82,9 @@ export default function BookingConfirmScreen({ navigation, route }) {
       <View style={styles.bookingFooter}>
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => navigation.navigate("BookingSuccess", { charger, slot })}
+          onPress={handleConfirm}
         >
-          <Text style={styles.primaryButtonText}>Confirm booking</Text>
+          <Text style={styles.primaryButtonText}>Pay & book</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.ghostButton} onPress={() => navigation.goBack()}>
           <Text style={styles.ghostButtonText}>Edit</Text>

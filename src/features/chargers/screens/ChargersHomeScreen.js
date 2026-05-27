@@ -11,6 +11,7 @@ import ErrorBanner from "../../../ui/components/ErrorBanner";
 import FloatingReloadButton from "../../../ui/components/FloatingReloadButton";
 import LoadingState from "../../../ui/components/LoadingState";
 import MainLayout from "../../../ui/components/MainLayout";
+import { subscribeBookingSync } from "../../booking/services/bookingApi";
 
 export default function ChargersHomeScreen() {
   const listRef = useRef(null);
@@ -52,6 +53,14 @@ export default function ChargersHomeScreen() {
       requestLocation();
     }
   }, [sortMode, userCoords, locationStatus, requestLocation]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeBookingSync(() => {
+      loadChargers({ isRefresh: true });
+    });
+
+    return unsubscribe;
+  }, [loadChargers]);
 
   const filtered = useMemo(() => {
     return chargers.filter((c) => {

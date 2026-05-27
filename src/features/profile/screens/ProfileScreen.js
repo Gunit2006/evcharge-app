@@ -1,12 +1,25 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import MainLayout from "../../../ui/components/MainLayout";
 import GlassCard from "../../../ui/components/GlassCard";
 import useAuth from "../../auth/hooks/useAuth";
+import { fetchMyBookings, subscribeBookingSync } from "../../booking/services/bookingApi";
 import styles from "../../../styles/appStyles";
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, token, signOut } = useAuth();
+
+  useEffect(() => {
+    if (!token) {
+      return undefined;
+    }
+
+    const unsubscribe = subscribeBookingSync(() => {
+      fetchMyBookings({ token, onUnauthorized: signOut }).catch(() => {});
+    });
+
+    return unsubscribe;
+  }, [token, signOut]);
 
   return (
     <MainLayout>

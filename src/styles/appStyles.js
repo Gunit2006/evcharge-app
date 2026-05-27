@@ -784,6 +784,13 @@ const styles = StyleSheet.create({
     width: "100%",
   },
 
+  sessionTimerText: {
+    color: "#fda4af",
+    fontSize: 12,
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    marginTop: 6,
+  },
+
   sessionStatItem: {
     marginBottom: 12,
   },
@@ -985,6 +992,10 @@ const styles = StyleSheet.create({
     borderColor: "rgba(90, 200, 250, 0.5)",
   },
 
+  slotChipDisabled: {
+    opacity: 0.45,
+  },
+
   slotText: {
     color: "#cbd5e1",
     fontSize: 12,
@@ -993,6 +1004,18 @@ const styles = StyleSheet.create({
 
   slotTextActive: {
     color: "#e0f2fe",
+  },
+
+  slotTextDisabled: {
+    color: "#94a3b8",
+  },
+
+  slotStatusText: {
+    marginTop: 4,
+    color: "#fda4af",
+    fontSize: 10,
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    textTransform: "uppercase",
   },
 
   bookingFooter: {
@@ -1036,6 +1059,56 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
     fontSize: 12,
     fontFamily: "SpaceGrotesk_400Regular",
+  },
+
+  bookingSuccessPolicy: {
+    marginTop: 8,
+    color: "#cbd5e1",
+    fontSize: 11,
+    fontFamily: "SpaceGrotesk_400Regular",
+    lineHeight: 16,
+  },
+
+  demoAvailabilityBlock: {
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
+  },
+
+  demoAvailabilityTitle: {
+    color: "#e2e8f0",
+    fontSize: 12,
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    marginBottom: 8,
+  },
+
+  demoSlotRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+
+  demoSlotLabel: {
+    color: "#cbd5e1",
+    fontSize: 11,
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    width: 70,
+  },
+
+  demoSlotStatus: {
+    fontSize: 10,
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    textTransform: "uppercase",
+    marginRight: 8,
+  },
+
+  demoSlotAvailable: {
+    color: "#86efac",
+  },
+
+  demoSlotBooked: {
+    color: "#fda4af",
   },
 });
 

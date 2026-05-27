@@ -1,11 +1,122 @@
-import React from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Text, TouchableOpacity, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 import MainLayout from "../../../ui/components/MainLayout";
 import GlassCard from "../../../ui/components/GlassCard";
 import BatteryRing from "../../../ui/components/BatteryRing";
+import { fetchDemoAvailability, releaseDemoSlot } from "../../chargers/api/demoAvailabilityApi";
 import styles from "../../../styles/appStyles";
 
+const ACTIVE_BOOKING_KEY = "demo_active_booking";
+
+function formatCountdown(ms) {
+  if (ms == null || ms <= 0) return "00:00";
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
 export default function HomeScreen({ navigation }) {
+  const [booking, setBooking] = useState(null);
+  const [timeLeftMs, setTimeLeftMs] = useState(null);
+  const [loadingBooking, setLoadingBooking] = useState(true);
+
+  const loadBooking = useCallback(async () => {
+    setLoadingBooking(true);
+    try {
+      const raw = await AsyncStorage.getItem(ACTIVE_BOOKING_KEY);
+      if (!raw) {
+        setBooking(null);
+        setTimeLeftMs(null);
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      setBooking(parsed);
+    } catch (err) {
+      setBooking(null);
+      setTimeLeftMs(null);
+    } finally {
+      setLoadingBooking(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBooking();
+    }, [loadBooking])
+  );
+
+  useEffect(() => {
+    if (!booking?.expires_at) {
+      setTimeLeftMs(null);
+      return;
+    }
+
+    const update = () => {
+      const remaining = new Date(booking.expires_at).getTime() - Date.now();
+      setTimeLeftMs(remaining);
+    };
+
+    update();
+    const intervalId = setInterval(update, 1000);
+    return () => clearInterval(intervalId);
+  }, [booking?.expires_at]);
+
+  useEffect(() => {
+    if (!booking?.charger?.id) return;
+
+    let active = true;
+    const poll = async () => {
+      try {
+        const data = await fetchDemoAvailability();
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const current = items.find((item) => item.charger_id === booking.charger.id);
+        const slotInfo = current?.slots?.[0];
+        if (active && slotInfo?.expires_at) {
+          const updated = {
+            ...booking,
+            slot: slotInfo.slot || booking.slot,
+            expires_at: slotInfo.expires_at,
+          };
+          setBooking(updated);
+          await AsyncStorage.setItem(ACTIVE_BOOKING_KEY, JSON.stringify(updated));
+        }
+
+        if (active && slotInfo?.status === "AVAILABLE" && booking?.status !== "active") {
+          setBooking(null);
+          setTimeLeftMs(null);
+          await AsyncStorage.removeItem(ACTIVE_BOOKING_KEY);
+        }
+      } catch (err) {
+        // Ignore polling errors.
+      }
+    };
+
+    poll();
+    const intervalId = setInterval(poll, 5000);
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [booking]);
+
+  const handleRelease = async () => {
+    if (!booking?.charger?.id) return;
+    try {
+      await releaseDemoSlot({ chargerId: booking.charger.id, slot: booking.slot, source: "app" });
+      await AsyncStorage.removeItem(ACTIVE_BOOKING_KEY);
+      setBooking(null);
+      setTimeLeftMs(null);
+    } catch (err) {
+      Alert.alert("Unable to release", err?.message || "Slot is locked by another client.");
+    }
+  };
+
+  const countdownLabel = useMemo(() => formatCountdown(timeLeftMs), [timeLeftMs]);
+  const chargerName = booking?.charger?.name || "Charger";
+  const expired = timeLeftMs != null && timeLeftMs <= 0;
   return (
     <MainLayout>
       <View style={styles.screenPad}>
@@ -31,16 +142,40 @@ export default function HomeScreen({ navigation }) {
         <Text style={styles.sectionTitleAlt}>Charging</Text>
         <GlassCard style={styles.sessionCard}>
           <View style={styles.sessionRow}>
-            <View>
-              <Text style={styles.sessionTitle}>No active session</Text>
-              <Text style={styles.sessionSubtitle}>Start a new charge in 2 taps.</Text>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={styles.sessionTitle}>
+                {loadingBooking
+                  ? "Checking booking..."
+                  : booking
+                    ? "Booked slot"
+                    : "No active session"}
+              </Text>
+              <Text style={styles.sessionSubtitle}>
+                {booking
+                  ? `${chargerName} · ${expired ? "Expired" : countdownLabel}`
+                  : "Start a new charge in 2 taps."}
+              </Text>
             </View>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => navigation.navigate("ChargingSession")}
-            >
-              <Text style={styles.primaryButtonText}>Start</Text>
-            </TouchableOpacity>
+            {booking ? (
+              <View style={{ alignItems: "flex-end" }}>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={() => navigation.navigate("ChargingSession")}
+                >
+                  <Text style={styles.primaryButtonText}>Start</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.ghostButton} onPress={handleRelease}>
+                  <Text style={styles.ghostButtonText}>Release</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={() => navigation.navigate("ChargingSession")}
+              >
+                <Text style={styles.primaryButtonText}>Start</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </GlassCard>
       </View>
