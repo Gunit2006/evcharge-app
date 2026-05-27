@@ -7,6 +7,7 @@ import styles from "../../../styles/appStyles";
 export default function BookingSuccessScreen({ navigation, route }) {
   const charger = route?.params?.charger || {};
   const slot = route?.params?.slot || "";
+  const gunLabel = route?.params?.gunLabel || "";
 
   return (
     <MainLayout>
@@ -18,7 +19,9 @@ export default function BookingSuccessScreen({ navigation, route }) {
 
       <GlassCard style={styles.bookingCard}>
         <Text style={styles.bookingSuccessTitle}>{charger.name || "Charger"}</Text>
-        <Text style={styles.bookingSuccessSubtitle}>{slot || ""}</Text>
+        <Text style={styles.bookingSuccessSubtitle}>
+          {gunLabel ? `${gunLabel} · ${slot}` : slot || ""}
+        </Text>
         <Text style={styles.bookingSuccessHint}>Arrive within 15 minutes to start charging.</Text>
         <Text style={styles.bookingSuccessPolicy}>
           Late arrival cancels the slot. Traffic delay may refund Rs 25; no-shows

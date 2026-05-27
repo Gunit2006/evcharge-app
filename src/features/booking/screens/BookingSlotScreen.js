@@ -7,7 +7,7 @@ import styles from "../../../styles/appStyles";
 
 export default function BookingSlotScreen({ navigation, route }) {
   const charger = route?.params?.charger || {};
-  const [selectedSlot, setSelectedSlot] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [availabilityMap, setAvailabilityMap] = useState({});
 
   const subtitle = useMemo(() => {
@@ -53,19 +53,20 @@ export default function BookingSlotScreen({ navigation, route }) {
   }, []);
 
   const demoSlots = availabilityMap?.[charger?.id]?.slots || [];
-  const liveSlot = demoSlots[0] || null;
-  const liveLabel = liveSlot?.slot || "";
-  const isBooked = liveSlot?.status === "BOOKED";
 
   useEffect(() => {
-    if (!liveLabel) {
-      setSelectedSlot("");
-      return;
+    if (!selectedSlot) return;
+    const match = demoSlots.find((slot) => slot.gun_id === selectedSlot.gun_id);
+    if (!match || match.status === "BOOKED") {
+      setSelectedSlot(null);
+    } else if (match.slot !== selectedSlot.slot) {
+      setSelectedSlot({
+        gun_id: match.gun_id,
+        gun_label: match.gun_label,
+        slot: match.slot,
+      });
     }
-    if (isBooked || selectedSlot !== liveLabel) {
-      setSelectedSlot("");
-    }
-  }, [liveLabel, isBooked, selectedSlot]);
+  }, [demoSlots, selectedSlot]);
 
   return (
     <MainLayout>
@@ -78,28 +79,43 @@ export default function BookingSlotScreen({ navigation, route }) {
       <GlassCard style={styles.bookingCard}>
         <Text style={styles.bookingSectionTitle}>Choose a time</Text>
         <View style={styles.slotGrid}>
-          {liveLabel ? (
-            <TouchableOpacity
-              key={liveLabel}
-              style={[
-                styles.slotChip,
-                selectedSlot === liveLabel && styles.slotChipActive,
-                isBooked && styles.slotChipDisabled,
-              ]}
-              onPress={() => setSelectedSlot(liveLabel)}
-              disabled={isBooked}
-            >
-              <Text
-                style={[
-                  styles.slotText,
-                  selectedSlot === liveLabel && styles.slotTextActive,
-                  isBooked && styles.slotTextDisabled,
-                ]}
-              >
-                {liveLabel}
-              </Text>
-              {isBooked && <Text style={styles.slotStatusText}>Booked</Text>}
-            </TouchableOpacity>
+          {demoSlots.length > 0 ? (
+            demoSlots.map((slotInfo) => {
+              const active = selectedSlot?.gun_id === slotInfo.gun_id;
+              const isBooked = slotInfo.status === "BOOKED";
+              return (
+                <TouchableOpacity
+                  key={slotInfo.gun_id}
+                  style={[
+                    styles.slotChip,
+                    active && styles.slotChipActive,
+                    isBooked && styles.slotChipDisabled,
+                  ]}
+                  onPress={() =>
+                    setSelectedSlot({
+                      gun_id: slotInfo.gun_id,
+                      gun_label: slotInfo.gun_label,
+                      slot: slotInfo.slot,
+                    })
+                  }
+                  disabled={isBooked}
+                >
+                  <Text
+                    style={[
+                      styles.slotText,
+                      active && styles.slotTextActive,
+                      isBooked && styles.slotTextDisabled,
+                    ]}
+                  >
+                    {slotInfo.gun_label}
+                  </Text>
+                  <Text style={[styles.slotMetaText, isBooked && styles.slotTextDisabled]}>
+                    {slotInfo.slot}
+                  </Text>
+                  {isBooked && <Text style={styles.slotStatusText}>Booked</Text>}
+                </TouchableOpacity>
+              );
+            })
           ) : (
             <Text style={styles.authHelperText}>No live slot available.</Text>
           )}
@@ -109,7 +125,14 @@ export default function BookingSlotScreen({ navigation, route }) {
       <View style={styles.bookingFooter}>
         <TouchableOpacity
           style={[styles.primaryButton, !selectedSlot && styles.primaryButtonDisabled]}
-          onPress={() => navigation.navigate("BookingConfirm", { charger, slot: selectedSlot })}
+          onPress={() =>
+            navigation.navigate("BookingConfirm", {
+              charger,
+              slot: selectedSlot?.slot,
+              gunId: selectedSlot?.gun_id,
+              gunLabel: selectedSlot?.gun_label,
+            })
+          }
           disabled={!selectedSlot}
         >
           <Text style={styles.primaryButtonText}>Continue</Text>

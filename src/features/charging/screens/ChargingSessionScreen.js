@@ -60,11 +60,12 @@ export default function ChargingSessionScreen({ navigation }) {
         const data = await fetchDemoAvailability();
         const items = Array.isArray(data?.items) ? data.items : [];
         const current = items.find((item) => item.charger_id === booking.charger.id);
-        const slotInfo = current?.slots?.[0];
+        const slotInfo = current?.slots?.find((slot) => slot.gun_id === booking.gun_id);
         if (active && slotInfo?.expires_at) {
           const updated = {
             ...booking,
             slot: slotInfo.slot || booking.slot,
+            gun_label: slotInfo.gun_label || booking.gun_label,
             expires_at: slotInfo.expires_at,
           };
           setBooking(updated);
@@ -110,7 +111,12 @@ export default function ChargingSessionScreen({ navigation }) {
   const handleRelease = async () => {
     if (!booking?.charger?.id) return;
     try {
-      await releaseDemoSlot({ chargerId: booking.charger.id, slot: booking.slot, source: "app" });
+      await releaseDemoSlot({
+        chargerId: booking.charger.id,
+        slot: booking.slot,
+        gunId: booking.gun_id,
+        source: "app",
+      });
       await AsyncStorage.removeItem(ACTIVE_BOOKING_KEY);
       setBooking(null);
       setSessionStarted(false);
@@ -123,7 +129,12 @@ export default function ChargingSessionScreen({ navigation }) {
   const handleEndCharging = async () => {
     if (!booking?.charger?.id) return;
     try {
-      await releaseDemoSlot({ chargerId: booking.charger.id, slot: booking.slot, source: "app" });
+      await releaseDemoSlot({
+        chargerId: booking.charger.id,
+        slot: booking.slot,
+        gunId: booking.gun_id,
+        source: "app",
+      });
       await AsyncStorage.removeItem(ACTIVE_BOOKING_KEY);
       setBooking(null);
       setSessionStarted(false);
@@ -147,6 +158,7 @@ export default function ChargingSessionScreen({ navigation }) {
   const countdownLabel = useMemo(() => formatCountdown(timeLeftMs), [timeLeftMs]);
   const expired = timeLeftMs != null && timeLeftMs <= 0;
   const chargerName = booking?.charger?.name || "Charger";
+  const gunLabel = booking?.gun_label || "Gun";
   return (
     <MainLayout>
       <View style={styles.screenPad}>
@@ -158,7 +170,7 @@ export default function ChargingSessionScreen({ navigation }) {
           {loading
             ? "Checking booking..."
             : booking
-              ? `${chargerName} · ${countdownLabel} remaining`
+                ? `${chargerName} · ${gunLabel} · ${countdownLabel} remaining`
               : "No active booking"}
         </Text>
       </View>
@@ -170,6 +182,10 @@ export default function ChargingSessionScreen({ navigation }) {
             <View style={styles.sessionStatItem}>
               <Text style={styles.metricLabel}>Charger</Text>
               <Text style={styles.metricValue}>{chargerName}</Text>
+            </View>
+            <View style={styles.sessionStatItem}>
+              <Text style={styles.metricLabel}>Gun</Text>
+              <Text style={styles.metricValue}>{gunLabel}</Text>
             </View>
             <View style={styles.sessionStatItem}>
               <Text style={styles.metricLabel}>Slot</Text>

@@ -1006,6 +1006,13 @@ const styles = StyleSheet.create({
     color: "#e0f2fe",
   },
 
+  slotMetaText: {
+    marginTop: 4,
+    color: "#94a3b8",
+    fontSize: 11,
+    fontFamily: "SpaceGrotesk_400Regular",
+  },
+
   slotTextDisabled: {
     color: "#94a3b8",
   },

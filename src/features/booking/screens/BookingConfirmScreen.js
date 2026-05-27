@@ -11,6 +11,8 @@ const ACTIVE_BOOKING_KEY = "demo_active_booking";
 export default function BookingConfirmScreen({ navigation, route }) {
   const charger = route?.params?.charger || {};
   const slot = route?.params?.slot || "";
+  const gunId = route?.params?.gunId || "";
+  const gunLabel = route?.params?.gunLabel || "";
 
   const showSlotUnavailable = () => {
     if (Platform.OS === "android") {
@@ -22,19 +24,26 @@ export default function BookingConfirmScreen({ navigation, route }) {
 
   const completeBooking = async () => {
     try {
-      const booking = await reserveDemoSlot({ chargerId: charger?.id, slot, source: "app" });
+      const booking = await reserveDemoSlot({
+        chargerId: charger?.id,
+        slot,
+        gunId,
+        source: "app",
+      });
       await AsyncStorage.setItem(
         ACTIVE_BOOKING_KEY,
         JSON.stringify({
           charger,
           slot: booking?.slot || slot,
+          gun_id: booking?.gun_id || gunId,
+          gun_label: booking?.gun_label || gunLabel,
           expires_at: booking?.expires_at || null,
           status: "booked",
           booked_at: new Date().toISOString(),
           source: "app",
         })
       );
-      navigation.navigate("BookingSuccess", { charger, slot });
+      navigation.navigate("BookingSuccess", { charger, slot, gunLabel });
     } catch (err) {
       if (err?.status === 409) {
         showSlotUnavailable();
@@ -68,6 +77,10 @@ export default function BookingConfirmScreen({ navigation, route }) {
         <View style={styles.bookingRow}>
           <Text style={styles.bookingLabel}>Charger</Text>
           <Text style={styles.bookingValue}>{charger.name || "-"}</Text>
+        </View>
+        <View style={styles.bookingRow}>
+          <Text style={styles.bookingLabel}>Gun</Text>
+          <Text style={styles.bookingValue}>{gunLabel || "-"}</Text>
         </View>
         <View style={styles.bookingRow}>
           <Text style={styles.bookingLabel}>Slot</Text>

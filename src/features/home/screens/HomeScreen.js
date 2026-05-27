@@ -73,11 +73,12 @@ export default function HomeScreen({ navigation }) {
         const data = await fetchDemoAvailability();
         const items = Array.isArray(data?.items) ? data.items : [];
         const current = items.find((item) => item.charger_id === booking.charger.id);
-        const slotInfo = current?.slots?.[0];
+        const slotInfo = current?.slots?.find((slot) => slot.gun_id === booking.gun_id);
         if (active && slotInfo?.expires_at) {
           const updated = {
             ...booking,
             slot: slotInfo.slot || booking.slot,
+            gun_label: slotInfo.gun_label || booking.gun_label,
             expires_at: slotInfo.expires_at,
           };
           setBooking(updated);
@@ -105,7 +106,12 @@ export default function HomeScreen({ navigation }) {
   const handleRelease = async () => {
     if (!booking?.charger?.id) return;
     try {
-      await releaseDemoSlot({ chargerId: booking.charger.id, slot: booking.slot, source: "app" });
+      await releaseDemoSlot({
+        chargerId: booking.charger.id,
+        slot: booking.slot,
+        gunId: booking.gun_id,
+        source: "app",
+      });
       await AsyncStorage.removeItem(ACTIVE_BOOKING_KEY);
       setBooking(null);
       setTimeLeftMs(null);
@@ -116,6 +122,7 @@ export default function HomeScreen({ navigation }) {
 
   const countdownLabel = useMemo(() => formatCountdown(timeLeftMs), [timeLeftMs]);
   const chargerName = booking?.charger?.name || "Charger";
+  const gunLabel = booking?.gun_label || "Gun";
   const expired = timeLeftMs != null && timeLeftMs <= 0;
   return (
     <MainLayout>
@@ -152,7 +159,9 @@ export default function HomeScreen({ navigation }) {
               </Text>
               <Text style={styles.sessionSubtitle}>
                 {booking
-                  ? `${chargerName} · ${expired ? "Expired" : countdownLabel}`
+                  ? `${chargerName} · ${gunLabel} · ${booking?.slot || ""} · ${
+                      expired ? "Expired" : countdownLabel
+                    }`
                   : "Start a new charge in 2 taps."}
               </Text>
             </View>

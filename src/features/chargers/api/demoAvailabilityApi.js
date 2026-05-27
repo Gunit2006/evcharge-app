@@ -52,10 +52,10 @@ export function fetchDemoAvailability() {
   return request("/api/demo/availability");
 }
 
-export function reserveDemoSlot({ chargerId, slot, source }) {
-  return request("/api/demo/reserve", { charger_id: chargerId, slot, source });
+export function reserveDemoSlot({ chargerId, slot, gunId, source }) {
+  return request("/api/demo/reserve", { charger_id: chargerId, slot, gun_id: gunId, source });
 }
 
-export function releaseDemoSlot({ chargerId, slot, source }) {
-  return request("/api/demo/release", { charger_id: chargerId, slot, source });
+export function releaseDemoSlot({ chargerId, slot, gunId, source }) {
+  return request("/api/demo/release", { charger_id: chargerId, slot, gun_id: gunId, source });
 }
